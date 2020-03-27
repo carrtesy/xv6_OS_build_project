@@ -1,7 +1,9 @@
 # Dev log
-- 2020-03-10: Written "hello xv6" to the booting console.
+- 2020-03-10: Written "hello xv6" to the booting console[project 0 done].
+- 2020-03-28: Updated "hello" syscall.
 
 # README from MIT
+```
 xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix
 Version 6 (v6).  xv6 loosely follows the structure and style of v6,
 but is implemented for a modern x86-based multiprocessor using ANSI C.
@@ -52,3 +54,4 @@ will need to install a cross-compiler gcc suite capable of producing
 x86 ELF binaries (see https://pdos.csail.mit.edu/6.828/).
 Then run "make TOOLPREFIX=i386-jos-elf-". Now install the QEMU PC
 simulator and run "make qemu".
+```
