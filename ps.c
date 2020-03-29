@@ -1,9 +1,21 @@
 #include "types.h"
-#include "user.h"
 #include "stat.h"
+#include "user.h"
+#include "fcntl.h"
 
-int main()
+int main(int argc, char *argv[])
 {
-  printf(1, "This is Syscall for *PS*\n");
+  int pid;
+
+  if(argc != 2)
+  {
+    printf(2, "WRONG USAGE!\n USAGE: ps (pid)\n");
+    exit();
+  }
+
+  pid = atoi(argv[1]);
+
+  ps(pid);
+
   exit();
 }

@@ -1,6 +1,10 @@
 # Dev log
 - 2020-03-10: Written "hello xv6" to the booting console[project 0 done].
 - 2020-03-28: Updated "hello" syscall.
+- 2020-03-29: Added 3 syscalls
+  - getnice: get priority of a process
+  - setnice: set priority of a process
+  - ps     : show information about processes
 
 # README from MIT
 ```
