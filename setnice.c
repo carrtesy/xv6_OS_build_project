@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
 
   result = setnice(pid, value);
   
-  if(result != 0)
+  if(result == 0)
     printf(1, "Process with pid %d has been set to: %d\n", pid, value);
   else
     printf(1, "There is no process with pid %d\n", pid);

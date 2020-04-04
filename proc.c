@@ -201,6 +201,7 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
+  np->priority = curproc->priority;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -564,6 +565,8 @@ setnice(int pid, int value)
   struct proc *p;
   int flag = 0;
 
+  if(value < 0 || value >= 40) return -1;
+
   acquire(&ptable.lock);
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
@@ -579,9 +582,9 @@ setnice(int pid, int value)
   release(&ptable.lock);
 
   if(flag)
-    return pid;
-  else 
     return 0;
+  else 
+    return -1;
 }
 
 void 
@@ -597,8 +600,6 @@ ps(int pid)
   [RUNNING]   "RUNNING",
   [ZOMBIE]    "ZOMBIE"
   };
-
-  sti();
 
   acquire(&ptable.lock);
   
@@ -619,38 +620,6 @@ ps(int pid)
       }
   }
   
-/*  
-  cprintf("name \t pid \t state \t priority \t\n");
-
-  if(pid == 0) // print all the process.
-  {
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    {
-      if (p->state == SLEEPING)
-       cprintf("%s \t %d \t SLEEPING \t %d \n", p->name, p->pid, p->priority);
-      else if (p->state == RUNNING)
-        cprintf("%s \t %d \t RUNNING \t %d \n", p->name, p->pid, p->priority);
-      else if (p->state == RUNNABLE)
-        cprintf("%s \t %d \t RUNNABLE \t %d \n", p->name, p->pid, p->priority);
-    }
-  }
-  else // print single process.
-  {
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    {
-
-      if(p->pid == pid)
-      {
-        if (p->state == SLEEPING)
-          cprintf("%s \t %d \t SLEEPING \t %d \n", p->name, p->pid, p->priority);
-        else if (p->state == RUNNING)
-          cprintf("%s \t %d \t RUNNING \t %d \n", p->name, p->pid, p->priority);
-        else if (p->state == RUNNABLE)
-          cprintf("%s \t %d \t RUNNABLE \t %d \n", p->name, p->pid, p->priority);
-      }
-    }
-  }
-  */
   release(&ptable.lock);
 
 }
