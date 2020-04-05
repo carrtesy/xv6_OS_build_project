@@ -547,7 +547,7 @@ getnice(int pid)
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
-    if(p->pid == pid)
+    if(p->pid == pid && p->state)
     {
       niceValue = p->priority;
       break;
@@ -571,7 +571,7 @@ setnice(int pid, int value)
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
-    if(p->pid == pid )
+    if(p->pid == pid && p->state)
     {
       p->priority = value;
       flag = 1;
