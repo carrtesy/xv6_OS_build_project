@@ -53,6 +53,14 @@ trap(struct trapframe *tf)
       ticks++;
       wakeup(&ticks);
       release(&tickslock);
+
+      if(myproc())
+        if(myproc()->state == RUNNING){
+          myproc()->aruntime++;
+          myproc()->druntime++; 
+          myproc()->vruntime += 1024 / myproc()->weight;
+        }
+      
     }
     lapiceoi();
     break;
@@ -108,7 +116,20 @@ trap(struct trapframe *tf)
   // If interrupts were on while locks held, would need to check nlock.
   if(myproc() && myproc()->state == RUNNING &&
      tf->trapno == T_IRQ0+IRQ_TIMER)
-    yield();
+     {
+      //cprintf("ticks:%d process:%s timeslice:%d druntime:%d\n", ticks, myproc()->name,myproc()->time_slice, myproc()->druntime);
+      if(myproc()->druntime > myproc()->time_slice)
+      {
+       cprintf("\n");
+       cprintf("Before YILED: process:%s, pid: %d, timeslice: %d, druntime: %d, vruntime: %d, aruntime: %d, weight: %d\n", 
+       myproc()->name, myproc()->pid, myproc()->time_slice, myproc()->druntime, myproc()->vruntime, myproc()->aruntime, myproc()->weight);
+       ps(0);
+       yield();
+       cprintf("After YILED: process:%s, pid: %d, timeslice: %d, druntime: %d, vruntime: %d, aruntime: %d, weight: %d\n",
+       myproc()->name, myproc()->pid, myproc()->time_slice, myproc()->druntime, myproc()->vruntime, myproc()->aruntime, myproc()->weight);
+       cprintf("\n");
+      }
+     }
 
   // Check if the process has been killed since we yielded
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
