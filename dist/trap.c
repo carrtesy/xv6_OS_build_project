@@ -32,7 +32,6 @@ idtinit(void)
   lidt(idt, sizeof(idt));
 }
 
-//PAGEBREAK: 41
 void
 trap(struct trapframe *tf)
 {
@@ -51,22 +50,19 @@ trap(struct trapframe *tf)
     if(cpuid() == 0){
       acquire(&tickslock);
       ticks++;
-      
-      struct proc *curproc = myproc();
-      int vtick;
-      // record elapsed runtimes: runtime, druntime, vruntime
-      if(curproc){
-        if(curproc->state == RUNNING) {
-          vtick              = (1000* 1024)/curproc->weight;
-          curproc->runtime  += 1000;
-          curproc->druntime += 1000;
-          curproc->vruntime += vtick;
-          cprintf("vtick: %d curproc->weight: %d\n", vtick, curproc->weight);
-          cprintf("as a result. curproc->vruntime: %d\n", curproc->vruntime);
-        }
-      }
       wakeup(&ticks);
       release(&tickslock);
+
+      if(myproc())
+        if(myproc()->state == RUNNING){
+          myproc()->aruntime++;
+          myproc()->druntime++; 
+          myproc()->vruntime += 1024 / myproc()->weight;
+
+          cprintf("RUNNING update: process:%s, pid: %d, timeslice: %d, druntime: %d, vruntime: %d, aruntime: %d, weight: %d\n", 
+          myproc()->name, myproc()->pid, myproc()->time_slice, myproc()->druntime, myproc()->vruntime, myproc()->aruntime, myproc()->weight);
+        }
+      
     }
     lapiceoi();
     break;
@@ -96,7 +92,6 @@ trap(struct trapframe *tf)
     lapiceoi();
     break;
 
-  //PAGEBREAK: 13
   default:
     if(myproc() == 0 || (tf->cs&3) == 0){
       // In kernel, it must be our mistake.
@@ -121,16 +116,21 @@ trap(struct trapframe *tf)
   // Force process to give up CPU on clock tick.
   // If interrupts were on while locks held, would need to check nlock.
   if(myproc() && myproc()->state == RUNNING &&
-     tf->trapno == T_IRQ0+IRQ_TIMER) {
-     cprintf("#####tick: %d/ process %s(pid %d)/ druntime/timeslice:(%d/%d)\n", 
-                        ticks, myproc()->name, myproc()->pid, myproc()->druntime, myproc()->time_slice);    
-    // If task runs more than time slice, enforce a yield of CPU.
-    if(myproc()->druntime > myproc()->time_slice){
-      cprintf("YEILD. process %s(pid %d)\n", myproc()->name, myproc()->pid);
-      myproc()->druntime = 0; // reset delta runtime.
-      yield();                // and yield
-    }
-  }
+     tf->trapno == T_IRQ0+IRQ_TIMER)
+     {
+      //cprintf("ticks:%d process:%s timeslice:%d druntime:%d\n", ticks, myproc()->name,myproc()->time_slice, myproc()->druntime);
+      if(myproc()->druntime > myproc()->time_slice)
+      {
+       cprintf("\n");
+       cprintf("Before YILED: process:%s, pid: %d, timeslice: %d, druntime: %d, vruntime: %d, aruntime: %d, weight: %d\n", 
+       myproc()->name, myproc()->pid, myproc()->time_slice, myproc()->druntime, myproc()->vruntime, myproc()->aruntime, myproc()->weight);
+       ps(0);
+       yield();
+       cprintf("After YILED: process:%s, pid: %d, timeslice: %d, druntime: %d, vruntime: %d, aruntime: %d, weight: %d\n",
+       myproc()->name, myproc()->pid, myproc()->time_slice, myproc()->druntime, myproc()->vruntime, myproc()->aruntime, myproc()->weight);
+       cprintf("\n");
+      }
+     }
 
   // Check if the process has been killed since we yielded
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)

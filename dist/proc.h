@@ -13,7 +13,6 @@ struct cpu {
 extern struct cpu cpus[NCPU];
 extern int ncpu;
 
-//PAGEBREAK: 17
 // Saved registers for kernel context switches.
 // Don't need to save all the segment registers (%cs, etc),
 // because they are constant across kernel contexts.
@@ -49,9 +48,11 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  // for cfs scheduling(proj 2)
+  
+  // for CFS priority schduling
   int priority, weight;
-  int runtime, vruntime, druntime; //runtime, vruntime, delta runtime
+  int aruntime, vruntime;
+  int druntime; // delta runtime
   int time_slice;
 };
 
