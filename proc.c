@@ -389,10 +389,10 @@ scheduler(void)
       switchuvm(p); // HW setups.
 
       // Sum of weights: Helper loop to get sum of weights
-      cprintf("\n printing RUNNABLES\n");
+      cprintf("\n printing RUNNABLES or RUNNINGS\n");
       sum_weights = 0;
       for(_p2 = ptable.proc; _p2 < &ptable.proc[NPROC]; _p2++){
-        if(_p2->state != RUNNABLE)
+        if(_p2->state != RUNNABLE && _p2->state != RUNNING)
           continue;
         cprintf("   _p2->name : %s _p2->weight: %d, _p2->pid: %d  _p2->vruntime: %d\n", _p2->name, _p2->weight, _p2->pid, _p2->vruntime);
         sum_weights += _p2->weight;

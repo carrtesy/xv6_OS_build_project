@@ -17,7 +17,7 @@ void testcfs()
 								// since child finished its job earlier & exit
     printf(1, "child process: parent has low priority. 5. \n");
 		for(i = 0; i < 3000; i++){
-			for ( z = 0; z < 3000.0; z += 0.1 )
+			for ( z = 0; z < 30000.0; z += 0.1 )
 				x =  x + 3.14 * 89.64;
 		}
     printf(1, "child calc done.\n");
@@ -28,7 +28,7 @@ void testcfs()
 		setnice(child, 0); // parent
     printf(1, "child has high priority.0.\n");//parent
 		for(i = 0; i < 3000; i++){
-			for ( z = 0; z < 3000.0; z += 0.1 )
+			for ( z = 0; z < 30000.0; z += 0.1 )
 				x =  x + 3.14 * 89.64;
 		}
     printf(1, "parent process: parent calc done.\n");

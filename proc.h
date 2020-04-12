@@ -1,4 +1,4 @@
-#define ll long long
+#define ull unsigned long long
 
 // Per-CPU state
 struct cpu {
@@ -53,7 +53,7 @@ struct proc {
   char name[16];               // Process name (debugging)
   // for cfs scheduling(proj 2)
   int priority, weight;
-  int runtime, vruntime, druntime; //runtime, vruntime, delta runtime
+  ull runtime, vruntime, druntime; //runtime, vruntime, delta runtime
   int time_slice;
 };
 
