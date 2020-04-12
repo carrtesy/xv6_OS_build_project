@@ -35,12 +35,12 @@ static int weights[40] =
 
 static char *states[] = 
 {
-  [UNUSED]    "UNUSED",
-  [EMBRYO]    "EMBRYO",
+  [UNUSED]    "UNUSED  ",
+  [EMBRYO]    "EMBRYO  ",
   [SLEEPING]  "SLEEPING",
   [RUNNABLE]  "RUNNABLE",
-  [RUNNING]   "RUNNING",
-  [ZOMBIE]    "ZOMBIE"
+  [RUNNING]   "RUNNING ",
+  [ZOMBIE]    "ZOMBIE  "
 };
 
 void
@@ -675,24 +675,109 @@ setnice(int pid, int value)
     return -1;
 }
 
+void printSpace(int times){
+  for(int i = 0; i < times; i++)
+    cprintf(" ");                              
+}
+
+void printTab(int times){
+  for(int i = 0; i < times; i++)
+    cprintf("\t");
+}
+
+int getdigits(int num){
+  int digits = 0;
+  int n      = num;
+
+  if(num == 0) return 1;
+  
+  while(n != 0){
+    n = n/10;
+    digits++;
+  }
+  return digits;
+}
+
 void printLable()
 {
-  cprintf("%s  \t\t  %s  \t\t  %s  \t\t  %s  \t\t  %s  \t\t  %s  \t\t  %s  \t\t\n",
-           "name",   "pid",    "state", "priority", "runtime/weight", 
-                                                            "runtime", "vruntime");
+  // p->name : 16 chars
+  cprintf("%s", "name");
+  printSpace(12);
+
+  // p->pid  : 6 chars
+  cprintf("%s", "pid");
+  printSpace(3);
+
+  // p->state: 10
+  cprintf("%s", "state");
+  printSpace(5);
+
+  // p->priority: 8
+  cprintf("%s", "priority");
+  printTab(1);
+
+  // runtime/weight: 14
+  cprintf("%s", "runtime/weight");
+  printTab(1);
+
+  // runtime : 20
+  cprintf("%s", "runtime");
+  printSpace(13);
+
+  // vruntime : 20
+  cprintf("%s", "vruntime");
+  printSpace(12);
+  
+  cprintf("tick %d\n", ticks);
 }
 
 void printStatus(struct proc *p)
 {
-  int r, vr, w;
+  int r, vr, w; // runtime, vruntime, weight
+  int _i, _c;   // helper variable to count p->name's length
   r  = p->runtime;
   vr = p->vruntime;
   w  = p->weight;
 
-  cprintf("%s  \t\t  %d  \t\t  %s  \t\t  %d  \t\t\t  %d  \t\t\t\t  %d  \t\t\t  %d  \t\t\n", 
-          p->name,   p->pid,   states[p->state], 
-                                         p->priority,
-                                                   r/w,      r,        vr);
+  // p->name : 16 chars
+  for(_i = 0; (_c = p->name[_i] & 0xFF) != 0; _i++);
+  _c = 16-_i;
+
+  cprintf("%s", p->name);
+  printSpace(_c);
+
+  // p->pid  : 6 chars
+  cprintf("%d", p->pid);
+  _c = getdigits(p->pid);
+  printSpace(6-_c);
+
+  // p->state: 10
+  cprintf("%s", states[p->state]);
+  printSpace(2);
+
+  // p->priority: 8
+  cprintf("%d", p->priority);
+  _c = getdigits(p->priority);
+  printSpace(8-_c);
+  printTab(1);
+  
+  // runtime/weight: 14
+  cprintf("%d", r/w);
+  _c = getdigits(r/w);
+  printSpace(14-_c);
+  printTab(1);
+  
+  // runtime : 20
+  cprintf("%d", r);
+  _c = getdigits(r);
+  printSpace(20-_c);
+
+  // vruntime : 20
+  cprintf("%d", vr);
+  _c = getdigits(vr);
+  printSpace(20-_c);
+
+  cprintf("\n");
 }
 
 void 

@@ -1,3 +1,5 @@
+#define ll long long
+
 // Per-CPU state
 struct cpu {
   uchar apicid;                // Local APIC ID
@@ -48,11 +50,9 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  
-  // for CFS priority schduling
+  // for cfs scheduling(proj 2)
   int priority, weight;
-  int aruntime, vruntime;
-  int druntime; // delta runtime
+  int runtime, vruntime, druntime; //runtime, vruntime, delta runtime
   int time_slice;
 };
 

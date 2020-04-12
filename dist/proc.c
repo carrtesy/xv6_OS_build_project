@@ -20,7 +20,7 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
-static int weights[40] =
+static int weights[40] = 
 {
   88761, 71755, 56483, 46273, 36291,
   29154, 23254, 18705, 14949, 11916,
@@ -30,6 +30,17 @@ static int weights[40] =
     335,   272,   215,   172,   137,
     110,    87,    70,    56,    45,
      36,    29,    23,    18,    15,
+};
+
+
+static char *states[] = 
+{
+  [UNUSED]    "UNUSED",
+  [EMBRYO]    "EMBRYO",
+  [SLEEPING]  "SLEEPING",
+  [RUNNABLE]  "RUNNABLE",
+  [RUNNING]   "RUNNING",
+  [ZOMBIE]    "ZOMBIE"
 };
 
 void
@@ -97,13 +108,10 @@ allocproc(void)
   return 0;
 
 found:
-  p->state = EMBRYO;
-  p->pid = nextpid++;
+  p->state    = EMBRYO;
+  p->pid      = nextpid++;
   p->priority = 20;
-  p->weight = weights[p->priority];
-  p->aruntime = 0;
-  p->druntime = 0;
-  p->vruntime = 1024/p->weight;
+  p->weight   = weights[p->priority];
 
   release(&ptable.lock);
 
@@ -215,7 +223,6 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
-  np->priority = curproc->priority;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -231,24 +238,14 @@ fork(void)
 
   acquire(&ptable.lock);
 
-
+  // inherits parent process's priority, weight, vruntime
+  np->priority = curproc->priority;
+  np->weight   = curproc->weight;
   np->vruntime = curproc->vruntime;
+  
+  // set to RUNNABLE.
   np->state = RUNNABLE;
-  cprintf("printing forked status info\n");
 
-
-  int      ar = (np->aruntime)*1000;
-  int   vr = (np->vruntime)*1000;
-  int  w  = np->weight;
-  cprintf(
-    "%s \t %s \t %s \t\t %s \t %s \t %s \t %s \n", 
-    "name", "pid", "state", "priority", "runtime/weight", "runtime", "vruntime");
-  
-  
-  cprintf(
-        "%s \t %d \t %s \t %d \t\t %d \t\t\t %d \t\t %d \n", 
-        np->name, np->pid,"RUNNABLE", np->priority, ar/w, ar, vr);
-  
   release(&ptable.lock);
 
   return pid;
@@ -354,53 +351,56 @@ wait(void)
 void
 scheduler(void)
 {
-  struct proc *p, *_p;
+  struct proc *p, *p_minvrun, *_p1, *_p2;
   struct cpu *c = mycpu();
+  int sum_weights;
   c->proc = 0;
   
   for(;;){
     // Enable interrupts on this processor.
     sti();
-    
-    struct proc * ph;
-    int sum_weights = 0;
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
 
-      ph = p;
-
-
-      //cprintf("calculating sum of weights...\n");
-      // helper loop for getting total weight, and min vruntime
-      for(_p = ptable.proc; _p<&ptable.proc[NPROC]; _p++){
-        if(_p->state != RUNNABLE)
+      p_minvrun = p;
+      // min vruntime: Helper loop to get minimum vruntime.
+      for(_p1 = ptable.proc; _p1 < &ptable.proc[NPROC]; _p1++){
+        if(_p1->state != RUNNABLE)
           continue;
-
-        sum_weights += _p->weight;
-
-        //cprintf("   _p->name : %s _p->weight: %d\n", ph->name, _p->weight);
-        if(ph->vruntime > _p->vruntime)
-          ph = _p; // minimum vruntime is selected
+        
+        // Select minimum vruntime RUNNABLE process
+        if(_p1->vruntime < p_minvrun->vruntime)
+          p_minvrun = _p1;
       }
-      
-      //cprintf("sum of RUNNING weights: %d\n", sum_weights);
-      p = ph;
+
+      p = p_minvrun;
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
       c->proc = p;
-      switchuvm(p); // tell HW to use target process's page table
-      p->state = RUNNING;
-      p->time_slice = (10 * p->weight)/sum_weights;
-      //cprintf("process %s running - time slice: %d\n", p->name, p->time_slice);
+      switchuvm(p); // HW setups.
 
-      swtch(&(c->scheduler), p->context); // context switch to the target process's kernel thread
+      // Sum of weights: Helper loop to get sum of weights
+      cprintf("\n printing RUNNABLES\n");
+      sum_weights = 0;
+      for(_p2 = ptable.proc; _p2 < &ptable.proc[NPROC]; _p2++){
+        if(_p2->state != RUNNABLE)
+          continue;
+        cprintf("   _p2->name : %s _p2->weight: %d, _p2->pid: %d  _p2->vruntime: %d\n", _p2->name, _p2->weight, _p2->pid, _p2->vruntime);
+        sum_weights += _p2->weight;
+      }
+      
+      p->time_slice = (10000 * p->weight)/sum_weights; 
+      p->state      = RUNNING;
+      
+      cprintf("       process %s(pid %d) selected./ vruntime: %d / time slice: %d\n", p->name, p->pid, p->vruntime, p->time_slice);
+
+      swtch(&(c->scheduler), p->context);
       switchkvm();
 
       // Process is done running for now.
@@ -444,7 +444,6 @@ yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
   myproc()->state = RUNNABLE;
-  myproc()->druntime = 0;
   sched();
   release(&ptable.lock);
 }
@@ -496,8 +495,6 @@ sleep(void *chan, struct spinlock *lk)
   // Go to sleep.
   p->chan = chan;
   p->state = SLEEPING;
-  p->druntime = 0;
-  p->vruntime = 1024/p->weight;
 
   sched();
 
@@ -516,11 +513,41 @@ sleep(void *chan, struct spinlock *lk)
 static void
 wakeup1(void *chan)
 {
-  struct proc *p;
+  struct proc *p, *p_minvrun, *_p;
+  int min_vruntime, wtick;
+  int flag;
+  
+  min_vruntime = __INT_MAX__;
+  flag         = 0;
+  // get minimum vruntime here
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state != RUNNABLE)
+      continue;
+
+    flag         = 1; // some RUNNABLE exists.
+    p_minvrun    = p;
+    min_vruntime = p_minvrun->vruntime;
+
+    for(_p = ptable.proc; _p<&ptable.proc[NPROC]; _p++){
+      if(p->state != RUNNABLE)
+        continue;
+
+      if(_p->vruntime < p_minvrun->vruntime){
+        p_minvrun = _p;
+        min_vruntime = p_minvrun->vruntime;
+      }
+    }
+  }
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
+    if(p->state == SLEEPING && p->chan == chan){
       p->state = RUNNABLE;
+      wtick    = ((1000 * 1024)/p->weight);
+      if(flag){
+        p->vruntime = min_vruntime - wtick;
+        if(p->vruntime < 0) p->vruntime = 0;
+      } 
+    }
 }
 
 // Wake up all processes sleeping on chan.
@@ -629,7 +656,7 @@ setnice(int pid, int value)
     if(p->pid == pid && p->state)
     {
       p->priority = value;
-      p->weight = weights[value];
+      p->weight   = weights[p->priority];
       flag = 1;
       break;
     }
@@ -643,61 +670,48 @@ setnice(int pid, int value)
     return -1;
 }
 
+void printLable()
+{
+  cprintf("%s  \t\t  %s  \t\t  %s  \t\t  %s  \t\t  %s  \t\t  %s  \t\t  %s  \t\t  tick %d\n",
+           "name",   "pid",    "state", "priority", "runtime/weight", 
+                                                            "runtime", "vruntime", ticks);
+}
+
+void printStatus(struct proc *p)
+{
+  int r, vr, w;
+  r  = p->runtime;
+  vr = p->vruntime;
+  w  = p->weight;
+
+  cprintf("%s  \t\t  %d  \t\t  %s  \t\t  %d  \t\t\t  %d  \t\t\t\t  %d  \t\t  %d  \t\t\n", 
+          p->name,   p->pid,   states[p->state], 
+                                         p->priority,
+                                                   r/w,      r,        vr);
+}
+
 void 
 ps(int pid)
 {
   struct proc *p;
-  int ar, vr, w; //aruntime, vruntime, weight : ticks in militick
-
-  static char *states[] = {
-  [UNUSED]    "UNUSED",
-  [EMBRYO]    "EMBRYO",
-  [SLEEPING]  "SLEEPING",
-  [RUNNABLE]  "RUNNABLE",
-  [RUNNING]   "RUNNING",
-  [ZOMBIE]    "ZOMBIE"
-  };
-
+ 
   acquire(&ptable.lock);
   
   if(pid == 0)
   {
-    cprintf(
-    "%s \t %s \t %s \t\t %s \t %s \t %s \t %s \n", 
-    "name", "pid", "state", "priority", "runtime/weight", "runtime", "vruntime");
-
+    printLable();
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
       if(p->state)
-      {
-        ar = (p->aruntime)*1000;
-        vr = (p->vruntime)*1000;
-        w  = p->weight;
-        
-        cprintf(
-        "%s \t %d \t %s \t %d \t\t %d \t\t\t %d \t\t %d \n", 
-        p->name, p->pid, states[p->state], p->priority, ar/w, ar, vr);
-        
-       // cprintf("p->weight :%d\n", p->weight); 
-      }
+        printStatus(p);
   }
   else
   {
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
       if(p->pid == pid)
       {
-        ar = (p->aruntime)*1000;
-        vr = (p->vruntime)*1000;
-        w  = p->weight;
-        
-        cprintf(
-        "%s \t %s \t %s \t\t %s \t %s \t %s \t %s \n", 
-        "name", "pid", "state", "priority", "runtime/weight", "runtime", "vruntime");
-      
-        cprintf(
-        "%s \t %d \t %s \t %d \t\t %d \t\t\t %d \t\t %d \n", 
-        p->name, p->pid, states[p->state], p->priority, ar/w, ar, vr);
+        printLable();
+        printStatus(p);
       }
-
   }
   
   release(&ptable.lock);
