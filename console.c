@@ -48,9 +48,11 @@ printint(int xx, int base, int sign)
   while(--i >= 0)
     consputc(buf[i]);
 }
+
 //PAGEBREAK: 50
 
 // Print to the console. only understands %d, %x, %p, %s.
+// define %l
 void
 cprintf(char *fmt, ...)
 {

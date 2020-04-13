@@ -57,9 +57,9 @@ trap(struct trapframe *tf)
       // record elapsed runtimes: runtime, druntime, vruntime
       if(curproc){
         if(curproc->state == RUNNING) {
-          vtick              = (1000* 1024)/curproc->weight;
-          curproc->runtime  += 1000;
-          curproc->druntime += 1000;
+          vtick              = (1024000)/curproc->weight;
+          curproc->runtime  += 1000; 
+          curproc->druntime += 1000; 
           curproc->vruntime += vtick;
           cprintf("vtick: %d curproc->weight: %d\n", vtick, curproc->weight);
           cprintf("as a result. curproc->vruntime: %d\n", curproc->vruntime);
