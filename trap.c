@@ -54,15 +54,33 @@ trap(struct trapframe *tf)
       
       struct proc *curproc = myproc();
       int vtick;
+
       // record elapsed runtimes: runtime, druntime, vruntime
       if(curproc){
         if(curproc->state == RUNNING) {
+          //>>
+          /*
           vtick              = (1024000)/curproc->weight;
           curproc->runtime  += 1000; 
-          curproc->druntime += 1000; 
-          curproc->vruntime += vtick;
+          curproc->druntime += 1000;
+          */
+          
+          vtick              = ((1024000)/curproc->weight)*10000;
+          curproc->runtime  += 10000000; 
+          curproc->druntime += 10000000;
+          //<<intov test
+         //>> curproc->vruntime += vtick;
+          vadd(curproc->vruntime, vtick);
+          //<<
           cprintf("vtick: %d curproc->weight: %d\n", vtick, curproc->weight);
-          cprintf("as a result. curproc->vruntime: %d\n", curproc->vruntime);
+
+          //>>
+         // cprintf("as a result. curproc->vruntime: %d\n", curproc->vruntime);
+
+          cprintf("as a result. curproc->vruntime:");
+          printvr(curproc->vruntime);
+          cprintf("\n");
+          //<<
         }
       }
       wakeup(&ticks);

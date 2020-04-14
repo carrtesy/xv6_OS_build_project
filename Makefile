@@ -188,6 +188,11 @@ UPROGS=\
   _setnice\
   _ps\
   _testcfs\
+  _testfirst\
+  _testsecond\
+  _testthird\
+  _testfourth\
+  _testfifth\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

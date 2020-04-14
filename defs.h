@@ -124,6 +124,13 @@ int             getnice(int pid);
 int             setnice(int pid, int value);
 void            ps(int pid);
 
+//>>
+void            vadd(uint vr[], uint x);
+void            vsub(uint vr[], uint x);
+int             vcompare(uint vra[], uint vrb[]);
+void            printvr(uint vr[]);
+//<<intov
+
 // swtch.S
 void            swtch(struct context**, struct context*);
 

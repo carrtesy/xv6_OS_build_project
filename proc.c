@@ -43,6 +43,64 @@ static char *states[] =
   [ZOMBIE]    "ZOMBIE  "
 };
 
+/*
+vruntime utility.
+*/
+// uint covers up to 4,294,967,295
+// newly made overflow condition is 1,000,000,000
+// (can express up to 999,999,999)
+
+#define VINT_MAX 1000000000
+void vadd(uint vr[], uint x){
+  vr[0] += x;
+  if(vr[0] >= VINT_MAX){
+    vr[1]++;
+    vr[0] = vr[0]- VINT_MAX;
+  }
+}
+
+void vsub(uint vr[], uint x){
+  if(vr[0] > x){
+    vr[0] -= x;
+  } else {
+    vr[1]--; // borrow from upper digit.
+    vr[0] = VINT_MAX + vr[0] - x;
+  }
+}
+
+int vcompare(uint vra[], uint vrb[]){
+  /*
+    value is same, return 0
+    a is bigger, return 1
+    b is bigger, return 2
+  */
+  // compare upper digit first
+  if(vra[1] > vrb[1])
+    return 1;
+  else if(vra[1] < vrb[1])
+    return 2;
+  else // if no overflow occured
+  {
+    if(vra[0] > vrb[0])
+      return 1;
+    else if(vra[0] < vrb[0])
+      return 2;
+    else
+      return 0;
+  }
+  
+}
+
+void printvr(uint vr[])
+{
+  if(vr[1])
+    cprintf("%d", vr[1]);
+
+  cprintf("%d", vr[0]);
+}
+
+// end vr
+
 void
 pinit(void)
 {
@@ -243,8 +301,11 @@ fork(void)
   // inherits parent process's priority, weight, vruntime
   np->priority = curproc->priority;
   np->weight   = curproc->weight;
-  np->vruntime = curproc->vruntime;
-  
+  //>> np->vruntime = curproc->vruntime;
+  np->vruntime[0] = curproc->vruntime[0];
+  np->vruntime[1] = curproc->vruntime[1];
+  //<<intov
+
   // set to RUNNABLE.
   np->state = RUNNABLE;
 
@@ -376,8 +437,17 @@ scheduler(void)
           continue;
         
         // Select minimum vruntime RUNNABLE process
+
+        /*>>
         if(_p1->vruntime < p_minvrun->vruntime)
           p_minvrun = _p1;
+        */
+
+        if(vcompare(_p1->vruntime, p_minvrun->vruntime) == 2)
+          p_minvrun = _p1;
+
+        //<<intov
+
       }
 
       p = p_minvrun;
@@ -389,19 +459,38 @@ scheduler(void)
       switchuvm(p); // HW setups.
 
       // Sum of weights: Helper loop to get sum of weights
-      cprintf("\n printing RUNNABLES or RUNNINGS\n");
+     // cprintf("\n printing RUNNABLES or RUNNINGS\n");
+        cprintf("\n printing ALL\n");
       sum_weights = 0;
-      for(_p2 = ptable.proc; _p2 < &ptable.proc[NPROC]; _p2++){
+      for(_p2 = ptable.proc; _p2 < &ptable.proc[NPROC]; _p2++){       
+        if(_p2->state){
+        cprintf("  _p2->state:%s, _p2->name : %s _p2->weight: %d, _p2->pid: %d, _p2->vruntime:", states[_p2->state] , _p2->name, _p2->weight, _p2->pid);
+        printvr(_p2->vruntime);
+        cprintf("\n");
+        }
         if(_p2->state != RUNNABLE && _p2->state != RUNNING)
           continue;
-        cprintf("   _p2->name : %s _p2->weight: %d, _p2->pid: %d  _p2->vruntime: %d\n", _p2->name, _p2->weight, _p2->pid, _p2->vruntime);
+       
+        //>> cprintf("   _p2->name : %s _p2->weight: %d, _p2->pid: %d  _p2->vruntime: %d\n", _p2->name, _p2->weight, _p2->pid, _p2->vruntime);
+       
+       // cprintf("   _p2->name : %s _p2->weight: %d, _p2->pid: %d, _p2->vruntime:", _p2->name, _p2->weight, _p2->pid);
+       // printvr(_p2->vruntime);
+       // cprintf("\n");
+        //<< intov
         sum_weights += _p2->weight;
       }
       
-      p->time_slice = (10000 * p->weight)/sum_weights; 
+     //>> p->time_slice = (10000 * p->weight)/sum_weights;
+      p->time_slice = ((10000* p->weight)/sum_weights)*10000;
+     //<<intov test
       p->state      = RUNNING;
       
-      cprintf("       process %s(pid %d) selected./ vruntime: %d / time slice: %d\n", p->name, p->pid, p->vruntime, p->time_slice);
+
+      //>> cprintf("       process %s(pid %d) selected./ vruntime: %d / time slice: %d\n", p->name, p->pid, p->vruntime, p->time_slice);
+      cprintf("       process %s(pid %d) selected./ vruntime: ", p->name, p->pid);
+      printvr(p->vruntime);
+      cprintf("time slice: %d", p->time_slice);
+      //<< intov
 
       swtch(&(c->scheduler), p->context);
       switchkvm();
@@ -517,6 +606,8 @@ sleep(void *chan, struct spinlock *lk)
 static void
 wakeup1(void *chan)
 {
+  //
+  /* >>
   struct proc *p, *p_minvrun, *_p;
   int min_vruntime, wtick;
   int flag;
@@ -533,7 +624,7 @@ wakeup1(void *chan)
     min_vruntime = p_minvrun->vruntime;
 
     for(_p = ptable.proc; _p<&ptable.proc[NPROC]; _p++){
-      if(p->state != RUNNABLE)
+      if(_p->state != RUNNABLE)
         continue;
 
       if(_p->vruntime < p_minvrun->vruntime){
@@ -552,6 +643,62 @@ wakeup1(void *chan)
         if(p->vruntime < 0) p->vruntime = 0;
       } 
     }
+  */
+  //<<intov
+
+  struct proc *p, *p_minvrun, *_p;
+  uint min_vruntime[2] = {0,0};
+  uint wtick;
+  int flag;
+  
+  flag         = 0;
+  // get minimum vruntime here
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state != RUNNABLE)
+      continue;
+
+    flag         = 1; // some RUNNABLE exists.
+    p_minvrun    = p;
+    //>>
+    min_vruntime[1] = p_minvrun->vruntime[1];
+    min_vruntime[0] = p_minvrun->vruntime[0];
+    //<<
+
+    for(_p = ptable.proc; _p<&ptable.proc[NPROC]; _p++){
+      if(_p->state != RUNNABLE)
+        continue;
+
+      //>>
+      if(_p->vruntime < p_minvrun->vruntime){
+        p_minvrun = _p;
+        min_vruntime[1] = p_minvrun->vruntime[1];
+        min_vruntime[0] = p_minvrun->vruntime[0];
+      }
+      //<<
+    }
+  }
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    if(p->state == SLEEPING && p->chan == chan){
+      p->state = RUNNABLE;
+      wtick    = ((1000 * 1024)/p->weight);
+      if(flag){
+        uint wtick_vector[2] = {0, wtick};
+        int underflow = 0;
+        underflow = vcompare(min_vruntime, wtick_vector);
+        vsub(min_vruntime, wtick);
+        p->vruntime[0] = min_vruntime[0];
+        p->vruntime[1] = min_vruntime[1];
+
+        if(underflow == 2){ 
+          p->vruntime[0] = 0;
+          p->vruntime[1] = 0;
+        }
+      } 
+    }
+
+
+
 }
 
 // Wake up all processes sleeping on chan.
@@ -724,7 +871,7 @@ void printLable()
   cprintf("%s", "runtime");
   printSpace(13);
 
-  // vruntime : 20
+  // vruntime : no limit
   cprintf("%s", "vruntime");
   printSpace(12);
   
@@ -733,7 +880,10 @@ void printLable()
 
 void printStatus(struct proc *p)
 {
-  int r, vr, w; // runtime, vruntime, weight
+  int r, w;     // runtime, weight
+  //>>
+  uint * vr;    // vruntime
+  //<<intov
   int _i, _c;   // helper variable to count p->name's length
   r  = p->runtime;
   vr = p->vruntime;
@@ -772,10 +922,14 @@ void printStatus(struct proc *p)
   _c = getdigits(r);
   printSpace(20-_c);
 
-  // vruntime : 20
+  // vruntime : no limit
+  // >> 
+/*
   cprintf("%d", vr);
   _c = getdigits(vr);
   printSpace(20-_c);
+*/
+  printvr(vr);
 
   cprintf("\n");
 }
