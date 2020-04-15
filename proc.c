@@ -301,10 +301,8 @@ fork(void)
   // inherits parent process's priority, weight, vruntime
   np->priority = curproc->priority;
   np->weight   = curproc->weight;
-  //>> np->vruntime = curproc->vruntime;
   np->vruntime[0] = curproc->vruntime[0];
   np->vruntime[1] = curproc->vruntime[1];
-  //<<intov
 
   // set to RUNNABLE.
   np->state = RUNNABLE;
@@ -431,22 +429,13 @@ scheduler(void)
         continue;
 
       p_minvrun = p;
-      // min vruntime: Helper loop to get minimum vruntime.
       for(_p1 = ptable.proc; _p1 < &ptable.proc[NPROC]; _p1++){
         if(_p1->state != RUNNABLE)
           continue;
         
         // Select minimum vruntime RUNNABLE process
-
-        /*>>
-        if(_p1->vruntime < p_minvrun->vruntime)
-          p_minvrun = _p1;
-        */
-
         if(vcompare(_p1->vruntime, p_minvrun->vruntime) == 2)
           p_minvrun = _p1;
-
-        //<<intov
 
       }
 
@@ -459,39 +448,16 @@ scheduler(void)
       switchuvm(p); // HW setups.
 
       // Sum of weights: Helper loop to get sum of weights
-     // cprintf("\n printing RUNNABLES or RUNNINGS\n");
-        cprintf("\n printing ALL\n");
       sum_weights = 0;
       for(_p2 = ptable.proc; _p2 < &ptable.proc[NPROC]; _p2++){       
-        if(_p2->state){
-        cprintf("  _p2->state:%s, _p2->name : %s _p2->weight: %d, _p2->pid: %d, _p2->vruntime:", states[_p2->state] , _p2->name, _p2->weight, _p2->pid);
-        printvr(_p2->vruntime);
-        cprintf("\n");
-        }
         if(_p2->state != RUNNABLE && _p2->state != RUNNING)
           continue;
-       
-        //>> cprintf("   _p2->name : %s _p2->weight: %d, _p2->pid: %d  _p2->vruntime: %d\n", _p2->name, _p2->weight, _p2->pid, _p2->vruntime);
-       
-       // cprintf("   _p2->name : %s _p2->weight: %d, _p2->pid: %d, _p2->vruntime:", _p2->name, _p2->weight, _p2->pid);
-       // printvr(_p2->vruntime);
-       // cprintf("\n");
-        //<< intov
         sum_weights += _p2->weight;
       }
       
-     //>> p->time_slice = (10000 * p->weight)/sum_weights;
-      p->time_slice = ((10000* p->weight)/sum_weights)*10000;
-     //<<intov test
+      p->time_slice = (10000 * p->weight)/sum_weights;
       p->state      = RUNNING;
       
-
-      //>> cprintf("       process %s(pid %d) selected./ vruntime: %d / time slice: %d\n", p->name, p->pid, p->vruntime, p->time_slice);
-      cprintf("       process %s(pid %d) selected./ vruntime: ", p->name, p->pid);
-      printvr(p->vruntime);
-      cprintf("time slice: %d", p->time_slice);
-      //<< intov
-
       swtch(&(c->scheduler), p->context);
       switchkvm();
 
@@ -606,52 +572,13 @@ sleep(void *chan, struct spinlock *lk)
 static void
 wakeup1(void *chan)
 {
-  //
-  /* >>
-  struct proc *p, *p_minvrun, *_p;
-  int min_vruntime, wtick;
-  int flag;
-  
-  min_vruntime = __INT_MAX__;
-  flag         = 0;
-  // get minimum vruntime here
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->state != RUNNABLE)
-      continue;
-
-    flag         = 1; // some RUNNABLE exists.
-    p_minvrun    = p;
-    min_vruntime = p_minvrun->vruntime;
-
-    for(_p = ptable.proc; _p<&ptable.proc[NPROC]; _p++){
-      if(_p->state != RUNNABLE)
-        continue;
-
-      if(_p->vruntime < p_minvrun->vruntime){
-        p_minvrun = _p;
-        min_vruntime = p_minvrun->vruntime;
-      }
-    }
-  }
-
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan){
-      p->state = RUNNABLE;
-      wtick    = ((1000 * 1024)/p->weight);
-      if(flag){
-        p->vruntime = min_vruntime - wtick;
-        if(p->vruntime < 0) p->vruntime = 0;
-      } 
-    }
-  */
-  //<<intov
 
   struct proc *p, *p_minvrun, *_p;
   uint min_vruntime[2] = {0,0};
   uint wtick;
   int flag;
   
-  flag         = 0;
+  flag = 0;
   // get minimum vruntime here
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state != RUNNABLE)
@@ -659,22 +586,18 @@ wakeup1(void *chan)
 
     flag         = 1; // some RUNNABLE exists.
     p_minvrun    = p;
-    //>>
     min_vruntime[1] = p_minvrun->vruntime[1];
     min_vruntime[0] = p_minvrun->vruntime[0];
-    //<<
 
     for(_p = ptable.proc; _p<&ptable.proc[NPROC]; _p++){
       if(_p->state != RUNNABLE)
         continue;
 
-      //>>
       if(_p->vruntime < p_minvrun->vruntime){
         p_minvrun = _p;
         min_vruntime[1] = p_minvrun->vruntime[1];
         min_vruntime[0] = p_minvrun->vruntime[0];
       }
-      //<<
     }
   }
 
@@ -696,8 +619,6 @@ wakeup1(void *chan)
         }
       } 
     }
-
-
 
 }
 
@@ -923,12 +844,6 @@ void printStatus(struct proc *p)
   printSpace(20-_c);
 
   // vruntime : no limit
-  // >> 
-/*
-  cprintf("%d", vr);
-  _c = getdigits(vr);
-  printSpace(20-_c);
-*/
   printvr(vr);
 
   cprintf("\n");

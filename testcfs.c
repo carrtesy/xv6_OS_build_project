@@ -12,11 +12,11 @@ void testcfs()
 	
 	if((child = fork()) == 0) { // child
     printf(1, "child process init\n");
-    setnice(parent, 39);		// if you set parent's priority lower than child, 
+    setnice(parent, 5);		// if you set parent's priority lower than child, 
 								// 2nd ps will only printout parent process,
 								// since child finished its job earlier & exit
     printf(1, "child process: parent has low priority. 5. \n");
-		for(i = 0; i < 30000; i++){
+		for(i = 0; i < 3000; i++){
 			for ( z = 0; z < 30000.0; z += 0.1 )
 				x =  x + 3.14 * 89.64;
 		}
@@ -25,9 +25,9 @@ void testcfs()
 		exit();
 	} else {	
     printf(1, "parent process init\n");
-		setnice(child, 25); // parent
+		setnice(child, 0); // parent
     printf(1, "child has high priority.0.\n");//parent
-		for(i = 0; i < 30000; i++){
+		for(i = 0; i < 3000; i++){
 			for ( z = 0; z < 30000.0; z += 0.1 )
 				x =  x + 3.14 * 89.64;
 		}
