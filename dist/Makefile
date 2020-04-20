@@ -183,7 +183,6 @@ UPROGS=\
 	_wc\
 	_zombie\
 	_swaptest\
-  _hello\
   _getnice\
   _setnice\
   _ps\

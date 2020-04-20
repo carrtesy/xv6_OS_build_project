@@ -49,7 +49,9 @@ printint(int xx, int base, int sign)
     consputc(buf[i]);
 }
 
+
 // Print to the console. only understands %d, %x, %p, %s.
+// define %l
 void
 cprintf(char *fmt, ...)
 {

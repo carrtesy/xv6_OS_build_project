@@ -53,15 +53,15 @@ trap(struct trapframe *tf)
       
       struct proc *curproc = myproc();
       int vtick;
+
       // record elapsed runtimes: runtime, druntime, vruntime
       if(curproc){
         if(curproc->state == RUNNING) {
-          vtick              = (1000* 1024)/curproc->weight;
-          curproc->runtime  += 1000;
+          vtick              = (1024000)/curproc->weight;
+          curproc->runtime  += 1000; 
           curproc->druntime += 1000;
-          curproc->vruntime += vtick;
-          cprintf("vtick: %d curproc->weight: %d\n", vtick, curproc->weight);
-          cprintf("as a result. curproc->vruntime: %d\n", curproc->vruntime);
+          
+          vadd(curproc->vruntime, vtick);
         }
       }
       wakeup(&ticks);
@@ -120,13 +120,10 @@ trap(struct trapframe *tf)
   // If interrupts were on while locks held, would need to check nlock.
   if(myproc() && myproc()->state == RUNNING &&
      tf->trapno == T_IRQ0+IRQ_TIMER) {
-     cprintf("#####tick: %d/ process %s(pid %d)/ druntime/timeslice:(%d/%d)\n", 
-                        ticks, myproc()->name, myproc()->pid, myproc()->druntime, myproc()->time_slice);    
     // If task runs more than time slice, enforce a yield of CPU.
     if(myproc()->druntime > myproc()->time_slice){
-      cprintf("YEILD. process %s(pid %d)\n", myproc()->name, myproc()->pid);
       myproc()->druntime = 0; // reset delta runtime.
-      yield();                // and yield
+      yield();
     }
   }
 

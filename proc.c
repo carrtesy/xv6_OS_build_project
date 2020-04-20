@@ -593,7 +593,7 @@ wakeup1(void *chan)
       if(_p->state != RUNNABLE)
         continue;
 
-      if(_p->vruntime < p_minvrun->vruntime){
+      if(vcompare(_p->vruntime, p_minvrun->vruntime) == 2){
         p_minvrun = _p;
         min_vruntime[1] = p_minvrun->vruntime[1];
         min_vruntime[0] = p_minvrun->vruntime[0];
@@ -601,12 +601,12 @@ wakeup1(void *chan)
     }
   }
 
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == SLEEPING && p->chan == chan){
       p->state = RUNNABLE;
       wtick    = ((1000 * 1024)/p->weight);
       if(flag){
-        uint wtick_vector[2] = {0, wtick};
+        uint wtick_vector[2] = {wtick, 0};
         int underflow = 0;
         underflow = vcompare(min_vruntime, wtick_vector);
         vsub(min_vruntime, wtick);
@@ -619,7 +619,7 @@ wakeup1(void *chan)
         }
       } 
     }
-
+  }
 }
 
 // Wake up all processes sleeping on chan.

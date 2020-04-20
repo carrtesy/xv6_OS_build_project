@@ -1,5 +1,3 @@
-#define ll long long
-
 // Per-CPU state
 struct cpu {
   uchar apicid;                // Local APIC ID
@@ -52,7 +50,8 @@ struct proc {
   char name[16];               // Process name (debugging)
   // for cfs scheduling(proj 2)
   int priority, weight;
-  int runtime, vruntime, druntime; //runtime, vruntime, delta runtime
+  uint vruntime[2];            // vruntime
+  uint runtime, druntime;      //runtime, delta runtime
   int time_slice;
 };
 
