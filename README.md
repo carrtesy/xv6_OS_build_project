@@ -5,6 +5,10 @@
   - getnice: get priority of a process
   - setnice: set priority of a process
   - ps     : show information about processes
+- 2020-04-22: CFS Scheduler
+  - implemented linux CFS Scheduler
+  - ps     : modified to print vruntime, etc.
+  - proc has been updated to measure times.
 
 # README from MIT
 ```
