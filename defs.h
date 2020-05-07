@@ -68,6 +68,7 @@ char*           kalloc(void);
 void            kfree(char*);
 void            kinit1(void*, void*);
 void            kinit2(void*, void*);
+int             freemem(void);
 
 // kbd.c
 void            kbdintr(void);
@@ -195,6 +196,12 @@ void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
+
+// project 3
+uint            mmap(uint, int, int, int, int, int);
+int             munmap(uint);
+int             handle_pgfault(struct proc*, uint, uint);
+
 
 // swap.c
 void swapread(char* ptr, int blkno);

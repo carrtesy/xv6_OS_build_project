@@ -45,6 +45,18 @@ trap(struct trapframe *tf)
     return;
   }
 
+  if(tf->trapno == T_PGFLT){ // page fault handling
+    int pgfh; // checks if page fault was handled properly
+    cprintf("calling page faulthandler, tf->err %d, fault addr: %x\n", tf->err, rcr2()); 
+    pgfh = handle_pgfault(myproc(), rcr2(), tf->err);
+    cprintf("%d\n", pgfh);
+   
+    // kill current process if pagefault is not handled properly
+    if(pgfh == -1)
+      myproc()->killed = 1;
+    return;    
+  }
+
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
     if(cpuid() == 0){

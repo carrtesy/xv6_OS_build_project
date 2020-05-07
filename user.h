@@ -28,6 +28,9 @@ int swapwrite(const char*, int);
 int getnice(int pid);
 int setnice(int pid, int value);
 void ps(int pid);
+uint mmap(uint, int, int, int, int, int);
+int munmap(uint);
+int freemem(void);
 
 // ulib.c
 int stat(const char*, struct stat*);

@@ -9,6 +9,7 @@
 #include "mmu.h"
 #include "spinlock.h"
 
+uint numfreemem = 0;
 void freerange(void *vstart, void *vend);
 extern char end[]; // first address after kernel loaded from ELF file
                    // defined by the kernel linker script in kernel.ld
@@ -48,8 +49,10 @@ freerange(void *vstart, void *vend)
 {
   char *p;
   p = (char*)PGROUNDUP((uint)vstart);
-  for(; p + PGSIZE <= (char*)vend; p += PGSIZE)
+  for(; p + PGSIZE <= (char*)vend; p += PGSIZE){
     kfree(p);
+    numfreemem++;
+  }
 }
 //PAGEBREAK: 21
 // Free the page of physical memory pointed at by v,
@@ -72,6 +75,9 @@ kfree(char *v)
   r = (struct run*)v;
   r->next = kmem.freelist;
   kmem.freelist = r;
+
+  numfreemem++; // page freed: inc free memory cnt
+
   if(kmem.use_lock)
     release(&kmem.lock);
 }
@@ -87,6 +93,9 @@ kalloc(void)
   if(kmem.use_lock)
     acquire(&kmem.lock);
   r = kmem.freelist;
+  
+  numfreemem--; // page allocated: dec free memory cnt
+
   if(r)
     kmem.freelist = r->next;
   if(kmem.use_lock)
@@ -94,3 +103,8 @@ kalloc(void)
   return (char*)r;
 }
 
+int
+freemem(void)
+{
+  return numfreemem;
+}

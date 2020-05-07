@@ -1,0 +1,173 @@
+trap.c:        if(curproc->state == RUNNING) {
+trap.c:          vtick              = (1024000)/curproc->weight;
+trap.c:          curproc->runtime  += 1000; 
+trap.c:          curproc->druntime += 1000;
+trap.c:          vadd(curproc->vruntime, vtick);
+kernel.asm:  safestrcpy(curproc->name, last, sizeof(curproc->name));
+kernel.asm:  curproc->pgdir = pgdir;
+kernel.asm:  oldpgdir = curproc->pgdir;
+kernel.asm:  curproc->tf->eip = elf.entry;  // main
+kernel.asm:  curproc->sz = sz;
+kernel.asm:  curproc->pgdir = pgdir;
+kernel.asm:  curproc->tf->eip = elf.entry;  // main
+kernel.asm:  curproc->tf->esp = sp;
+kernel.asm:        cpus[ncpu].apicid = proc->apicid;  // apicid may differ from ncpu
+kernel.asm:        cpus[ncpu].apicid = proc->apicid;  // apicid may differ from ncpu
+kernel.asm:  sz = curproc->sz;
+kernel.asm:  curproc->sz = sz;
+kernel.asm:    if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
+kernel.asm:    if((sz = deallocuvm(curproc->pgdir, sz, sz + n)) == 0)
+kernel.asm:  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
+kernel.asm:  np->sz = curproc->sz;
+kernel.asm:  *np->tf = *curproc->tf;
+kernel.asm:  np->sz = curproc->sz;
+kernel.asm:  *np->tf = *curproc->tf;
+kernel.asm:    if(curproc->ofile[i])
+kernel.asm:      np->ofile[i] = filedup(curproc->ofile[i]);
+kernel.asm:  np->cwd = idup(curproc->cwd);
+kernel.asm:  safestrcpy(np->name, curproc->name, sizeof(curproc->name));
+kernel.asm:  np->cwd = idup(curproc->cwd);
+kernel.asm:  safestrcpy(np->name, curproc->name, sizeof(curproc->name));
+kernel.asm:  np->priority = curproc->priority;
+kernel.asm:  np->weight   = curproc->weight;
+kernel.asm:  np->vruntime[0] = curproc->vruntime[0];
+kernel.asm:  np->vruntime[1] = curproc->vruntime[1];
+kernel.asm:  np->vruntime[1] = curproc->vruntime[1];
+kernel.asm:    if(curproc->ofile[fd]){
+kernel.asm:      fileclose(curproc->ofile[fd]);
+kernel.asm:      curproc->ofile[fd] = 0;
+kernel.asm:  iput(curproc->cwd);
+kernel.asm:  iput(curproc->cwd);
+kernel.asm:  curproc->cwd = 0;
+kernel.asm:  wakeup1(curproc->parent);
+kernel.asm:  curproc->state = ZOMBIE;
+kernel.asm:    if(!havekids || curproc->killed){
+kernel.asm:  if(addr >= curproc->sz || addr+4 > curproc->sz)
+kernel.asm:  if(addr >= curproc->sz)
+kernel.asm:  ep = (char*)curproc->sz;
+kernel.asm:  if(addr >= curproc->sz || addr+4 > curproc->sz)
+kernel.asm:  if(addr >= curproc->sz || addr+4 > curproc->sz)
+kernel.asm:  if(size < 0 || (uint)i >= curproc->sz || (uint)i+size > curproc->sz)
+kernel.asm:  num = curproc->tf->eax;
+kernel.asm:    curproc->tf->eax = syscalls[num]();
+kernel.asm:            curproc->pid, curproc->name, num);
+kernel.asm:    curproc->tf->eax = -1;
+kernel.asm:            curproc->pid, curproc->name, num);
+kernel.asm:    curproc->tf->eax = -1;
+kernel.asm:    if(curproc->ofile[fd] == 0){
+kernel.asm:      curproc->ofile[fd] = f;
+kernel.asm:    if(curproc->ofile[fd] == 0){
+kernel.asm:      curproc->ofile[fd] = f;
+kernel.asm:  iput(curproc->cwd);
+kernel.asm:  curproc->cwd = ip;
+kernel.asm:    if(curproc->ofile[fd] == 0){
+kernel.asm:      curproc->ofile[fd] = f;
+kernel.asm:    if(curproc->ofile[fd] == 0){
+kernel.asm:      curproc->ofile[fd] = f;
+kernel.asm:        if(curproc->state == RUNNING) {
+kernel.asm:          vtick              = (1024000)/curproc->weight;
+kernel.asm:          curproc->runtime  += 1000; 
+kernel.asm:          curproc->druntime += 1000;
+kernel.asm:          vtick              = (1024000)/curproc->weight;
+kernel.asm:          vadd(curproc->vruntime, vtick);
+kernel.asm:          vtick              = (1024000)/curproc->weight;
+kernel.asm:          vadd(curproc->vruntime, vtick);
+sysfile.c:    if(curproc->ofile[fd] == 0){
+sysfile.c:      curproc->ofile[fd] = f;
+sysfile.c:  iput(curproc->cwd);
+sysfile.c:  curproc->cwd = ip;
+이진파일 .git/objects/pack/pack-02bf1c2d64870f09099d6586417910b863960e03.pack 와(과) 일치
+tags:ep	kernel.asm	/^  ep = (char*)curproc->sz;$/;"	d
+tags:num	kernel.asm	/^  num = curproc->tf->eax;$/;"	d
+tags:oldpgdir	kernel.asm	/^  oldpgdir = curproc->pgdir;$/;"	d
+tags:sz	kernel.asm	/^  sz = curproc->sz;$/;"	d
+tags:vtick	kernel.asm	/^          vtick              = (1024000)\/curproc->weight;$/;"	d
+syscall.c:  if(addr >= curproc->sz || addr+4 > curproc->sz)
+syscall.c:  if(addr >= curproc->sz)
+syscall.c:  ep = (char*)curproc->sz;
+syscall.c:  if(size < 0 || (uint)i >= curproc->sz || (uint)i+size > curproc->sz)
+syscall.c:  num = curproc->tf->eax;
+syscall.c:    curproc->tf->eax = syscalls[num]();
+syscall.c:            curproc->pid, curproc->name, num);
+syscall.c:    curproc->tf->eax = -1;
+proc.c:  sz = curproc->sz;
+proc.c:    if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
+proc.c:    if((sz = deallocuvm(curproc->pgdir, sz, sz + n)) == 0)
+proc.c:  curproc->sz = sz;
+proc.c:  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
+proc.c:  np->sz = curproc->sz;
+proc.c:  *np->tf = *curproc->tf;
+proc.c:    if(curproc->ofile[i])
+proc.c:      np->ofile[i] = filedup(curproc->ofile[i]);
+proc.c:  np->cwd = idup(curproc->cwd);
+proc.c:  safestrcpy(np->name, curproc->name, sizeof(curproc->name));
+proc.c:  np->priority = curproc->priority;
+proc.c:  np->weight   = curproc->weight;
+proc.c:  np->vruntime[0] = curproc->vruntime[0];
+proc.c:  np->vruntime[1] = curproc->vruntime[1];
+proc.c:    if(curproc->ofile[fd]){
+proc.c:      fileclose(curproc->ofile[fd]);
+proc.c:      curproc->ofile[fd] = 0;
+proc.c:  iput(curproc->cwd);
+proc.c:  curproc->cwd = 0;
+proc.c:  wakeup1(curproc->parent);
+proc.c:  curproc->state = ZOMBIE;
+proc.c:    if(!havekids || curproc->killed){
+proc.c:// and have changed proc->state. Saves and restores
+proc.c:// be proc->intena and proc->ncli, but that would
+dist/trap.c:        if(curproc->state == RUNNING) {
+dist/trap.c:          vtick              = (1024000)/curproc->weight;
+dist/trap.c:          curproc->runtime  += 1000; 
+dist/trap.c:          curproc->druntime += 1000;
+dist/trap.c:          vadd(curproc->vruntime, vtick);
+dist/sysfile.c:    if(curproc->ofile[fd] == 0){
+dist/sysfile.c:      curproc->ofile[fd] = f;
+dist/sysfile.c:  iput(curproc->cwd);
+dist/sysfile.c:  curproc->cwd = ip;
+dist/syscall.c:  if(addr >= curproc->sz || addr+4 > curproc->sz)
+dist/syscall.c:  if(addr >= curproc->sz)
+dist/syscall.c:  ep = (char*)curproc->sz;
+dist/syscall.c:  if(size < 0 || (uint)i >= curproc->sz || (uint)i+size > curproc->sz)
+dist/syscall.c:  num = curproc->tf->eax;
+dist/syscall.c:    curproc->tf->eax = syscalls[num]();
+dist/syscall.c:            curproc->pid, curproc->name, num);
+dist/syscall.c:    curproc->tf->eax = -1;
+dist/proc.c:  sz = curproc->sz;
+dist/proc.c:    if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
+dist/proc.c:    if((sz = deallocuvm(curproc->pgdir, sz, sz + n)) == 0)
+dist/proc.c:  curproc->sz = sz;
+dist/proc.c:  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
+dist/proc.c:  np->sz = curproc->sz;
+dist/proc.c:  *np->tf = *curproc->tf;
+dist/proc.c:    if(curproc->ofile[i])
+dist/proc.c:      np->ofile[i] = filedup(curproc->ofile[i]);
+dist/proc.c:  np->cwd = idup(curproc->cwd);
+dist/proc.c:  safestrcpy(np->name, curproc->name, sizeof(curproc->name));
+dist/proc.c:  np->priority = curproc->priority;
+dist/proc.c:  np->weight   = curproc->weight;
+dist/proc.c:  np->vruntime[0] = curproc->vruntime[0];
+dist/proc.c:  np->vruntime[1] = curproc->vruntime[1];
+dist/proc.c:    if(curproc->ofile[fd]){
+dist/proc.c:      fileclose(curproc->ofile[fd]);
+dist/proc.c:      curproc->ofile[fd] = 0;
+dist/proc.c:  iput(curproc->cwd);
+dist/proc.c:  curproc->cwd = 0;
+dist/proc.c:  wakeup1(curproc->parent);
+dist/proc.c:  curproc->state = ZOMBIE;
+dist/proc.c:    if(!havekids || curproc->killed){
+dist/proc.c:// and have changed proc->state. Saves and restores
+dist/proc.c:// be proc->intena and proc->ncli, but that would
+dist/exec.c:  safestrcpy(curproc->name, last, sizeof(curproc->name));
+dist/exec.c:  oldpgdir = curproc->pgdir;
+dist/exec.c:  curproc->pgdir = pgdir;
+dist/exec.c:  curproc->sz = sz;
+dist/exec.c:  curproc->tf->eip = elf.entry;  // main
+dist/exec.c:  curproc->tf->esp = sp;
+dist/mp.c:        cpus[ncpu].apicid = proc->apicid;  // apicid may differ from ncpu
+exec.c:  safestrcpy(curproc->name, last, sizeof(curproc->name));
+exec.c:  oldpgdir = curproc->pgdir;
+exec.c:  curproc->pgdir = pgdir;
+exec.c:  curproc->sz = sz;
+exec.c:  curproc->tf->eip = elf.entry;  // main
+exec.c:  curproc->tf->esp = sp;
+mp.c:        cpus[ncpu].apicid = proc->apicid;  // apicid may differ from ncpu

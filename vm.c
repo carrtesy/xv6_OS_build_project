@@ -5,6 +5,11 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "fs.h"
+#include "spinlock.h"
+#include "sleeplock.h"
+#include "file.h"
+#include "fcntl.h"
 #include "elf.h"
 
 extern char data[];  // defined by kernel.ld
@@ -77,6 +82,381 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
     pa += PGSIZE;
   }
   return 0;
+}
+
+
+// Project 3: Virtual Memory
+
+struct mmap_area {
+  struct file *f;
+  uint addr;
+  int length;
+  int offset;
+  int prot;
+  int flags;
+  struct proc *p;
+};
+
+struct mmap_area mmlist[64];
+int mmlen = 0;
+
+// helper functions
+
+void deleteEntry(int idx)
+{
+  if(idx < 0 || idx >= mmlen){
+    cprintf("delete entry out of idx, exit\n");
+    exit();
+  }
+
+  for(int i = idx + 1; i < mmlen; i++)
+  {
+    mmlist[i-1] = mmlist[i]; 
+  }
+}
+
+// print out mmlist
+void printmmlist()
+{
+  for(int i = 0; i < mmlen; i++){
+    int upbdd = PGROUNDUP(mmlist[i].addr + mmlist[i].length);
+    cprintf("-mmlist[%d]\n", i);
+    cprintf("addr: %x\n", mmlist[i].addr);
+    cprintf("length: %d\n", mmlist[i].length);
+    cprintf("range: (%x, %x)\n", mmlist[i].addr, upbdd);
+  }
+}
+
+// is [pgbase:PGSIZE] belongs to [base:length] ?
+int pagebelongs(uint pgbase, uint base, int length)
+{
+  if(base <= pgbase && pgbase < base+length)
+    return 1;
+  return 0;
+}
+
+
+uint getaddr(uint start, int length, struct proc * p)
+{
+  uint addr = start;
+  struct mmap_area *mmentry;
+  int numpgs = length % PGSIZE == 0? length/PGSIZE: length/PGSIZE + 1 ;
+  
+  // check mmap region by page unit
+  for(int i = addr ; ; i += PGSIZE)
+  {
+    int pginentry = 0;
+    for(int pick = i; pick < i + PGSIZE * numpgs; pick += PGSIZE)
+    {
+      // iterate through mmlist
+      for(int k = 0; k < mmlen; k++)
+      {
+        mmentry = &mmlist[k];
+        if(p->pid == mmentry->p->pid && pagebelongs(pick, mmentry->addr, mmentry->length)){
+          cprintf("%x occupied\n", pick);
+          pginentry = 1;
+          break;
+        }
+      }
+      if(pginentry) break;
+    }
+
+    if(!pginentry){
+      addr = i;
+      break;
+    }
+  }
+
+  return addr;
+}
+
+/*
+#1. mmap
+    1.addr is always page-aligned
+    -if addr is NULL, should do automatic mapping
+    -if addr is given & flag is MAP_FIXED, should map into according address
+    2.length is also a multiple of page size
+    3.prot can be PROT_READ or PROT_READ|PROT_WRITE 
+    -prot should be match with file’s open flag
+    4.flags can be given with the combinations
+      1)MAP_PRIVATE should be given always
+      2)MAP_FIXED should be given to non-NULL addr
+      3)If MAP_ANONYMOUS is given, it is anonymous mapping
+      4)If MAP_ANONYMOUS is not given, it is file mapping
+      5)If MAP_POPULATE is given, allocate physical page & make page table for whole mapping area.
+      6)If MAP_POPULATE is not given, just record its mapping area.
+        If page fault occurs to according area (access to mapping area’s virtual address), 
+        allocate physical page & make page table to according page
+      7)Other flags will not be used
+     5.fd is given for file mappings, if not, it should be -1
+     6.offset is given for file mappings, if not, it should be 0
+     7.MMAPBASE of each process’s virtual address is 0x40000000
+*/
+uint mmap(uint addr, int length, int prot, int flags, int fd, int offset)
+{
+  struct mmap_area nmmap; // new mmap object
+  uint numpgs;
+  uint va, va_proper;
+  struct proc * curproc = myproc();
+  char * mem;
+  int mm_flag;
+  struct file * f;
+
+  flags |= MAP_PRIVATE; // MAP_PRIVATE is given always.
+  numpgs = (length % PGSIZE == 0)? length/PGSIZE :(length / PGSIZE) + 1;
+
+  cprintf("calling mmap\n");
+  cprintf("--print mmlist--\n");
+  printmmlist();
+
+  cprintf("pages to cover: %d\n", numpgs);
+  
+  // 1. resolve address.
+  // address is always given page-aligned.
+  if(!addr && (flags & MAP_FIXED))
+    return 0;
+
+  if(addr && (flags & MAP_FIXED)){
+    // if address is given, and flag is MAP_FIXED
+    // should map into according address.
+    va = MMAPBASE + addr;
+    va_proper = getaddr(va, length, curproc);
+
+    cprintf("addr to map: %x, proper mapping: %x\n", va, va_proper);
+
+    // if that address is already being occupied, 
+    // return 0 
+    if(va != va_proper)
+      return 0;
+  } else {
+    cprintf("Null addr mapping here\n");
+    va = getaddr(MMAPBASE, length, curproc);
+    cprintf("addr to map: %x\n", va);
+  }
+  
+  // 2. register mmap_area
+  nmmap.addr = va;
+  nmmap.length = length;
+  nmmap.offset = offset;
+  nmmap.prot = prot;
+  nmmap.flags = flags;
+  nmmap.p = curproc;
+
+  if(!(flags & MAP_ANONYMOUS)){
+    f = curproc->ofile[fd];
+    nmmap.f = f;
+
+    if(!(f->writable) && (prot & PROT_WRITE))
+      return 0;
+  }
+
+  mmlist[mmlen++] = nmmap;
+
+
+  if(prot | PROT_WRITE)
+    mm_flag = PTE_U | PTE_W;
+  else
+    mm_flag = PTE_U;
+
+  // 3. check if populate is given
+  if(flags & MAP_POPULATE) {
+    cprintf("MAP_POPULATE given\n");
+
+    // check if it is anonymous mapping.
+    if(flags & MAP_ANONYMOUS) {
+      cprintf("ANONYMOUS MAPPING: just spaces.\n");
+
+      for(int i = 0; i < numpgs; i++) {
+        // allocate physical memories for each pages.
+        // set to zero(anonymous mapping)
+        mem = kalloc();
+        memset(mem, 0, PGSIZE);
+        cprintf("alloc page at %x\n", va + i * PGSIZE);
+        mappages(curproc->pgdir, (char *) (va + i*PGSIZE), PGSIZE, V2P(mem), mm_flag);
+      }
+    } else {
+      cprintf("FILE MAPPING\n");
+      cprintf("copy file data here %x\n", f);
+      for(int i = 0; i < numpgs; i++) {
+        // allocate physical memories for each pages.
+        // set to 0, and read file. (file mapping)
+        mem = kalloc();
+        memset(mem, 0, PGSIZE);
+        cprintf("alloc page at %x mem: %x \n", va + i * PGSIZE, (char * ) mem);
+        ilock(f->ip);
+        begin_op();
+        readi(f->ip, mem, i*PGSIZE+offset, PGSIZE);
+        end_op();
+        iunlock(f->ip);
+        mappages(curproc->pgdir, (char *) (va + i*PGSIZE), PGSIZE, V2P(mem), mm_flag);
+      }
+    }
+  } // else, for non-populate mappings,
+    // nothing else left to do.
+    // tasks will be handled at handle_pgfault()
+
+  cprintf("return va: %x\n", va);
+  cprintf("\n");
+  return va;
+  
+}
+
+
+/*
+  •Page fault handler is for dealing with access on mapping region with physical page & page table is not allocated
+  •Return value: 1(succeed), -1(failed)
+  1.When an access occurs (read/write), catch according page fault (interrupt 14, T_PGFLT) in traps.h
+  2.In page fault handler, determine fault address by reading CR2 register(using rcr2()) 
+    & access was read or write read: tf->err&2 == 0 / write: tf->err == 1
+  3.Find according mapping region in mmap_area 
+    If faulted address has no corresponding mmap_area, return -1
+  4.If fault was write while mmap_areais write prohibited, then return -1
+  5.For only one page according to faulted address
+    1.Allocate new physical page
+    2.Fill new page with 0
+    3.If it is file mapping, read file into the physical page with offset
+    4.If it is anonymous mapping, just left the page which is filled with 0s
+    5.Make page table & fill it properly (if it was PROT_WRITE, PTE_W should be 1 in PTE value)
+*/
+int handle_pgfault(struct proc * p, uint faultaddr, uint errorcode)
+{
+  char * mem;
+  int in_mmlist = 0;
+  struct mmap_area *mmentry;
+  int mm_flag;
+  uint pg_loc = PGROUNDDOWN(faultaddr);
+  struct file *f;
+  int offset;
+
+  // debug
+  cprintf("errorcode: %d\n", errorcode);
+  cprintf("pg_loc: %x\n", pg_loc); 
+  if(errorcode == 1)
+    cprintf("write\n");
+  else if((errorcode & 2) == 0)
+    cprintf("read\n");
+  else{
+    cprintf("sth wrong\n");
+    return -1;
+  }
+  
+  // find according mapping region in mmlist
+  for(int i = 0; i < mmlen; i++){
+    if((mmlist[i].p)->pid == p->pid && pagebelongs(pg_loc, mmlist[i].addr, mmlist[i].length)){
+      cprintf("addr in mmlist!\n");
+      in_mmlist = 1;
+      mmentry = &mmlist[i];
+      break;
+    }
+  }
+
+  // check if there exists corresponding mmap_area
+  if(!in_mmlist) return -1; 
+  // check if access is write, with mmap area is write prohibited
+  if((errorcode == 1) && !(mmentry->prot & PROT_WRITE)) return -1; 
+  
+  // handle one page of faulted address.
+  
+  // allocate new physical page
+  mem = kalloc();
+  if(!mem)
+  {
+    cprintf("allocuvm out of memory\n");
+    return 0;
+  }
+  memset(mem, 0, PGSIZE); // fill new page with 0
+  
+  // page table parameter setting
+  if(mmentry->prot & PROT_WRITE)
+    mm_flag = PTE_W|PTE_U;
+  else
+    mm_flag = PTE_U;
+
+ 
+  if(!(mmentry->flags & MAP_ANONYMOUS)){ // if it is not anonymous mapping
+    cprintf("pgfault handler is calling file readi\n");
+    f = mmentry->f;
+    offset = mmentry->offset + pg_loc - mmentry->addr;
+    cprintf("offset %d\n", offset);
+    ilock(f->ip);
+    begin_op();
+    readi(f->ip, mem, offset, PGSIZE);
+    end_op();
+    iunlock(f->ip);
+    cprintf("read i is done\n");
+  } // else, do nothing, 
+    //leave memory with 0's
+
+  // make page table, and fill it properly
+  mappages(p->pgdir, (char *) pg_loc, PGSIZE, V2P(mem), mm_flag);
+  return 1;
+}
+
+int munmap(uint addr)
+{
+  struct mmap_area *mmentry;
+  int in_mmlist = 0;
+  int i, l;
+  int numpgs; // number of pages to free
+  struct proc * p;
+  pte_t *pte;
+
+  cprintf("calling munmap\n");
+  // find according mapping region in mmlist
+  for(i = 0; i < mmlen; i++){
+    if(pagebelongs(addr, mmlist[i].addr, mmlist[i].length)){
+      cprintf("addr in mmlist!\n");
+      in_mmlist = 1;
+      mmentry = &mmlist[i];
+      break;
+    }
+  }
+
+  cprintf("unmap idx : %d\n", i);
+  // if not in list, return -1
+  if(!in_mmlist) return -1;
+
+  // Is physical pages allocated?
+  // iterate through
+  l = mmentry->length;
+  numpgs = (l % PGSIZE == 0) ? l / PGSIZE : l / PGSIZE + 1;
+  p = mmentry->p;
+
+  cprintf("page length: %d, number of pages: %d, proc : %d\n", l, numpgs, p);
+  
+  for(int pg = 0; pg < numpgs; pg++){
+    int va = addr + PGSIZE * pg;
+    pte = walkpgdir(p->pgdir, (char *) va, 0);
+    cprintf("%dth page, at %x\n", pg+1, va);
+    if(*pte & PTE_P){
+      int pa = PTE_ADDR(*pte);
+      char * v = P2V(pa);
+
+      // before return, write back
+      // just for the file && write case
+      if(mmentry->prot & PROT_WRITE && !(mmentry->flags & MAP_ANONYMOUS)) {
+        ilock(mmentry->f->ip);
+        begin_op();
+        //cprintf("offset : %d\n", mmentry->offset + pg * PGSIZE);  
+        writei(mmentry->f->ip, (char *)va, mmentry->offset + pg * PGSIZE, PGSIZE);
+        end_op();
+        iunlock(mmentry->f->ip);
+      }
+
+      // free memory here
+      kfree(v);
+      *pte = 0;
+      cprintf("freed mem. status %d\n", *pte & PTE_P);
+    }
+  } 
+  
+  if(mmentry->prot & PROT_WRITE && !(mmentry->flags & MAP_ANONYMOUS))
+    iput(mmentry->f->ip);
+  // delete mmap_area entry
+  deleteEntry(i);
+
+  cprintf("\n");
+  return 1;
 }
 
 // There is one page table per process, plus one that's used when

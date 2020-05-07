@@ -25,3 +25,6 @@
 #define SYS_getnice 24
 #define SYS_setnice 25
 #define SYS_ps    26
+#define SYS_mmap  27
+#define SYS_munmap 28
+#define SYS_freemem 29
