@@ -10,7 +10,7 @@
   - ps     : modified to print vruntime, etc.
   - proc has been updated to measure times.
 - 2020-05-08: MMAP system call
-  -implemented MMAP, MUNMAP, pagefault handler, numfreemem
+  - implemented MMAP, MUNMAP, pagefault handler, numfreemem
 # README from MIT
 ```
 xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix
